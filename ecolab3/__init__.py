@@ -1,17 +1,25 @@
 import numpy as np
 from ecolab3.agents import Rabbit, Fox
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-def run_ecolab(env,agents,Niterations=10000,earlystop=True):
+def run_ecolab(env,agents,Niterations=1000,earlystop=True):
     """
-    Run ecolab with some selection of parameters.
+    Run ecolab, this applies the rules to the agents and the environment. It records
+    the grass array and the locations (and type) of agents in a list it returns.
+    
+    Arguments:
+    - env = an Environment object
+    - agents = a list of agents (all inherited from Agent)
+    - Niterations = number of iterations to run (default = 1000)
+    - earlystop = if true (default), will stop the simulation early if no agents left.
     """
 
     record = []
     for it in range(Niterations):
+        if (it+1)%100==0: print("%5d" % (it+1), end="\r") #progress message
+            
         #for each agent, apply rules (move, eat, breed)
         for agent in agents:
             agent.move(env)
@@ -28,41 +36,36 @@ def run_ecolab(env,agents,Niterations=10000,earlystop=True):
         #record the grass and agent locations (and types) for later plotting & analysis
         record.append({'grass':env.grass.copy(),'agents':np.array([a.summary_vector() for a in agents])})
 
-        #stop early if we run out of rabbits or foxes
+        #stop early if we run out of rabbits and foxes
         if earlystop:
-            nF = np.sum([type(a)==Fox for a in agents])
-            nR = np.sum([type(a)==Rabbit for a in agents])        
-            if (nF<1): break
-            if (nR<1): break
+            if len(agents)==0: break
     return record
 
 def draw_animation(fig,record):
     """
-    Draw the animation for the content of record
+    Draw the animation for the content of record. This doesn't use the draw
+    functions of the classes.
     """
     if len(record)==0: return None
 
     im = plt.imshow(np.zeros_like(record[0]['grass']), interpolation='none', aspect='auto', vmin=0, vmax=3, cmap='gray')
     ax = plt.gca()
 
-    foxes = ax.plot(np.zeros(100),np.zeros(100),'bo',markersize=10)
-    rabbits = ax.plot(np.zeros(100),np.zeros(100),'yx',markersize=10,mew=3)
+    foxesplot = ax.plot(np.zeros(1),np.zeros(1),'bo',markersize=10)
+    rabbitsplot = ax.plot(np.zeros(1),np.zeros(1),'yx',markersize=10,mew=3)
 
     def animate_func(i):
-        im.set_array(record[i]['grass'])
-        ags = record[i]['agents']
-        if len(ags)==0:
-            rabbits[0].set_data([],[])
-            foxes[0].set_data([],[])
-            return
-        coords = ags[ags[:,-1].astype(bool),0:2]
-        print(coords[:,1],coords[:,0])
-        rabbits[0].set_data(coords[:,1],coords[:,0])
-        coords = ags[~ags[:,-1].astype(bool),0:2]
-        print(coords[:,1],coords[:,0])
-        foxes[0].set_data(coords[:,1],coords[:,0])
-        #return [im]#,rabbits,foxes]
-
+            im.set_array(record[i]['grass'])
+            ags = record[i]['agents']
+            if len(ags)==0:
+                rabbits[0].set_data([],[])
+                foxes[0].set_data([],[])
+                return
+            coords = ags[ags[:,-1].astype(bool),0:2]
+            rabbitsplot[0].set_data(coords[:,1],coords[:,0])
+            coords = ags[~ags[:,-1].astype(bool),0:2]
+            foxesplot[0].set_data(coords[:,1],coords[:,0])
+            #return [im]#,rabbits,foxes]
 
     anim = animation.FuncAnimation(
                                    fig, 
@@ -71,3 +74,22 @@ def draw_animation(fig,record):
                                    interval = 1000 / 20, repeat=False # in ms
                                    )
     return anim
+
+def get_agent_counts(record):
+    """
+    Returns the number of foxes, rabbits and amount of grass in a N x 3 numpy array
+    the three columns are (Foxes, Rabbits, Grass).
+    """
+    counts = []
+    for r in record:
+        ags = r['agents']
+        if len(ags)==0:
+            nF = 0
+            nR = 0
+        else:
+            nF = np.sum(ags[:,-1]==0)
+            nR = np.sum(ags[:,-1]==1)
+        nG = np.sum(r['grass'])
+        counts.append([nF,nR,nG])
+    counts = np.array(counts)
+    return counts

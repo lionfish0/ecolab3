@@ -9,7 +9,7 @@ def argmax_2darray(a):
     return np.unravel_index(a.argmax(), a.shape)
 
 class Environment:
-    def __init__(self,shape=[40,40],startgrass=2,maxgrass=5,growrate=40):
+    def __init__(self,shape=[40,40],startgrass=1,maxgrass=3,growrate=10):
         """
         Create the environment
         Parameters:
@@ -18,10 +18,11 @@ class Environment:
          - maxgrass = maximum amount of grass allowed in each tile
          - growrate = number of tiles which get extra grass each iteration
         """
-        self.maxgrass = 5 #maximum it can grow to
-        self.growrate = 40 #how many new items of food added per step
-        self.shape = np.array([40,40]) #shape of the environment
+        self.maxgrass = maxgrass #maximum it can grow to
+        self.growrate = growrate #how many new items of food added per step
+        self.shape = shape #shape of the environment
         self.grass = np.full(self.shape,startgrass) #2*np.trunc(np.random.rand(*self.shape)*2)+2 #initial grass
+        
         
     def get_food(self,position):
         """
@@ -58,50 +59,39 @@ class Environment:
         if np.all(searchsquare<=0): return None #no food found
         return argmax_2darray(searchsquare+0.01*np.random.rand(vision*2+1,vision*2+1))+position-vision
         
-    def fix_position(self,position):
+
+    def check_position(self,position):
         """
-        Alters the position array in-place to be within the environment & rounded to nearest tile.
-        (doesn't return anything)
+        Returns whether the position is within the environment
         """
         position[:] = np.round(position)
-        if position[0]<0: position[0]=0
-        if position[1]<0: position[1]=0
-        if position[0]>self.shape[0]-1: position[0]=self.shape[0]-1
-        if position[1]>self.shape[1]-1: position[1]=self.shape[1]-1
+        if position[0]<0: return False
+        if position[1]<0: return False
+        if position[0]>self.shape[0]-1: return False
+        if position[1]>self.shape[1]-1: return False
+        
+        #this adds a 'wall' across the environment...
+        #if (position[1]>5) and (position[0]>self.shape[0]/2-3) and (position[0]<self.shape[0]/2+3): return False
+        return True
             
     def get_random_location(self):
         """
         Returns a random location in the environment.
         """
         return np.random.randint([0,0],self.shape)
-    
-    def get_random_bias_location(self):
-        """
-        Returns a random location in the environment with a bias towards the 'top'.
-        """
-        if np.random.rand()<0.4:
-            s = self.shape.copy()
-            s[0]=int(s[0]/5)
-            p = np.random.randint([0,0],s)
-        else:
-            p = np.random.randint([0,0],self.shape)
         
-        return p
-    
+        #if we have a more complicated environment shape, use this instead to place new grass in valid location...
+        #p = np.array([-10,-10])
+        #while not self.check_position(p):
+        #    p = np.random.randint([0,0],self.shape)
+        #return p
     
     def grow(self):
         """
-        Adds more grass
+        Adds more grass (random locations) 
+         - amount added controlled by self.growrate
         """
         for it in range(self.growrate):
-            #loc = self.get_random_location()
-            loc = self.get_random_bias_location()
+            loc = self.get_random_location()
             if self.grass[loc[0],loc[1]]<self.maxgrass:
                 self.grass[loc[0],loc[1]]+=1
-
-    def draw(self):
-        """
-        Plot the environment
-        """
-        plt.imshow(self.grass.T,cmap='gray')
-        plt.clim([0,10])
