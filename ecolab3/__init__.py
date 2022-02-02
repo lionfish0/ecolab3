@@ -3,6 +3,7 @@ from ecolab3.agents import Rabbit, Fox
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib import rc
 
 def run_ecolab(env,agents,Niterations=1000,earlystop=True):
     """
@@ -41,11 +42,16 @@ def run_ecolab(env,agents,Niterations=1000,earlystop=True):
             if len(agents)==0: break
     return record
 
-def draw_animation(fig,record):
+def draw_animation(fig,record,fps=20,saveto=None):
     """
     Draw the animation for the content of record. This doesn't use the draw
     functions of the classes.
+    - fig figure to draw to
+    - record = the data to draw
+    - fps = frames per second
+    - saveto = where to save it to
     """
+    #rc('animation', html='html5')
     if len(record)==0: return None
 
     im = plt.imshow(np.zeros_like(record[0]['grass']), interpolation='none', aspect='auto', vmin=0, vmax=3, cmap='gray')
@@ -58,8 +64,8 @@ def draw_animation(fig,record):
             im.set_array(record[i]['grass'])
             ags = record[i]['agents']
             if len(ags)==0:
-                rabbits[0].set_data([],[])
-                foxes[0].set_data([],[])
+                rabbitsplot[0].set_data([],[])
+                foxesplot[0].set_data([],[])
                 return
             coords = ags[ags[:,-1].astype(bool),0:2]
             rabbitsplot[0].set_data(coords[:,1],coords[:,0])
@@ -71,9 +77,11 @@ def draw_animation(fig,record):
                                    fig, 
                                    animate_func, 
                                    frames = len(record),
-                                   interval = 1000 / 20, repeat=False # in ms
+                                   interval = 1000 / fps, repeat=False # in ms
                                    )
-    return anim
+    if saveto is not None: anim.save(saveto, fps=fps, extra_args=['-vcodec', 'libx264']) 
+    from IPython.display import HTML
+    return HTML(anim.to_jshtml())
 
 def get_agent_counts(record):
     """
